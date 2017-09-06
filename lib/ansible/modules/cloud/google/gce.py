@@ -78,6 +78,15 @@ options:
       "monitoring", "sql-admin", "storage-full", "storage-ro",
       "storage-rw", "taskqueue", "userinfo-email"
     ]
+  instance_service_account_email:
+    version_added: "2.3"
+    description:
+      - service account the instance runns as. Needs
+        service_account_permissions to be specified. (see
+        U(https://cloud.google.com/compute/docs/access/create-enable-service-accounts-for-instances)
+        for detailed information)
+    required: false
+    default: null
   pem_file:
     version_added: "1.5.1"
     description:
@@ -425,6 +434,7 @@ def create_instances(module, gce, instance_names, number, lc_zone):
     preemptible = module.params.get('preemptible')
     disk_size = module.params.get('disk_size')
     service_account_permissions = module.params.get('service_account_permissions')
+    instance_service_account_email = module.params.get('instance_service_account_email')
 
     if external_ip == "none":
         instance_external_ip = None
@@ -494,7 +504,10 @@ def create_instances(module, gce, instance_names, number, lc_zone):
                 bad_perms.append(perm)
         if len(bad_perms) > 0:
             module.fail_json(msg='bad permissions: %s' % str(bad_perms))
-        ex_sa_perms.append({'email': "default"})
+        if instance_service_account_email:
+            ex_sa_perms.append({'email': instance_service_account_email})
+        else:
+            ex_sa_perms.append({'email': "default"})
         ex_sa_perms[0]['scopes'] = service_account_permissions
 
     # These variables all have default values but check just in case
@@ -666,6 +679,7 @@ def main():
             zone = dict(default='us-central1-a'),
             service_account_email = dict(),
             service_account_permissions = dict(type='list'),
+            instance_service_account_email = dict(),
             pem_file = dict(type='path'),
             credentials_file = dict(type='path'),
             project_id = dict(),
